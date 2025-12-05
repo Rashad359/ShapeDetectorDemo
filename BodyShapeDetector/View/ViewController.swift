@@ -17,21 +17,8 @@ class ViewController: UIViewController {
         return view
     }()
     
-    private lazy var handOverlayView: UIView = {
-        let view = UIView()
-        view.frame = CGRect(x: 0, y: 0, width: 60, height: 60)
-        view.layer.cornerRadius = 30
-        view.backgroundColor = UIColor.blue.withAlphaComponent(0.6)
-        view.layer.borderColor = UIColor.white.cgColor
-        view.layer.borderWidth = 2
-        view.isHidden = true
-        
-        return view
-    }()
-    
     private let testImage: UIImageView = {
         let imageView = UIImageView()
-//        imageView.image = .test2Photo
         
         return imageView
     }()
@@ -49,12 +36,16 @@ class ViewController: UIViewController {
         }
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        videoCapture.startCapturing {
+            super.viewWillAppear(animated)
+        }
+    }
+    
     private func setupUI() {
         view.addSubview(testImage)
         view.addSubview(testView)
         view.bringSubviewToFront(testView)
-        view.addSubview(handOverlayView)
-        view.bringSubviewToFront(handOverlayView)
         
         testImage.snp.makeConstraints { make in
             make.edges.equalToSuperview()
@@ -87,46 +78,11 @@ class ViewController: UIViewController {
         
         let bodyRequest = VNDetectHumanBodyPoseRequest(completionHandler: bodyPoseHandler)
         
-        let handRequest = VNDetectHumanHandPoseRequest(completionHandler: handPoseHandler)
-        handRequest.maximumHandCount = 1
-        
         do {
-            try requestHandler.perform([bodyRequest, handRequest])
+            try requestHandler.perform([bodyRequest])
         } catch {
             print("Unable to perform the request: \(error).")
         }
-    }
-    
-    private func handPoseHandler(request: VNRequest, error: Error?) {
-        guard let observations = request.results as? [VNHumanHandPoseObservation],
-              let observation = observations.first else {
-            DispatchQueue.main.async {
-                self.handOverlayView.isHidden = true
-            }
-            return
-        }
-        
-        guard let point = try? observation.recognizedPoint(.middleMCP),
-              point.confidence > 0.2 else {
-            DispatchQueue.main.async {
-                self.handOverlayView.isHidden = true
-            }
-           return
-        }
-        
-        let normalizedPoint = point.location
-        
-        DispatchQueue.main.async {
-            let screenWidth = self.testImage.bounds.width
-            let screenHeight = self.testImage.bounds.height
-            
-            let x = normalizedPoint.x * screenWidth
-            let y = (1 - normalizedPoint.y) * screenHeight + 50
-            
-            self.handOverlayView.isHidden = false
-            self.handOverlayView.center = CGPoint(x: x, y: y)
-        }
-        
     }
     
     private func bodyPoseHandler(request: VNRequest, error: Error?) {
@@ -158,36 +114,29 @@ class ViewController: UIViewController {
                 joints[key] = point.location
             }
         }
+        
+        // add right and left hip
+        guard let rightShoulder = joints[.rightShoulder],
+              let leftShoulder = joints[.leftShoulder],
+              let leftHip = joints[.leftHip],
+              let rightHip = joints[.rightHip] else { return joints }
+        
+        let shoulderMidX = (rightShoulder.x + leftShoulder.x) / 2
+        let hipMidX = (rightHip.x + leftHip.x) / 2
+        
+        let horizontalOffset = shoulderMidX - hipMidX
+        
+        let leanThreshold: CGFloat = 0.03
+        
+        if horizontalOffset > leanThreshold {
+            print("Leaning to the right")
+        } else if horizontalOffset < -leanThreshold {
+            print("Leaning to the left")
+        } else {
+            print("Standing upright")
+        }
+        
         return joints
-    }
-    
-    private func processObservation(_ observation: VNHumanBodyPoseObservation) {
-        guard let recognizedPoints = try? observation.recognizedPoints(.all) else { return }
-        
-        let torsoJointNames: [VNHumanBodyPoseObservation.JointName] = [
-            .neck,
-            .rightShoulder,
-            .rightHip,
-            .root,
-            .leftHip,
-            .leftShoulder,
-            .leftElbow,
-            .leftWrist
-        ]
-        
-        let imagePoints: [CGPoint] = torsoJointNames.compactMap {
-            guard let point = recognizedPoints[$0], point.confidence > 0 else { return nil }
-            
-            // Set width and height later
-            return VNImagePointForNormalizedPoint(point.location, Int(testImage.image?.size.width ?? 0), Int(testImage.image?.size.height ?? 0))
-        }
-        
-        imagePoints.forEach { point in
-            let view = UIView()
-            view.frame = CGRect(x: point.x, y: point.y, width: 40, height: 40)
-            view.backgroundColor = .red
-            self.view.addSubview(view)
-        }
     }
 }
 
@@ -202,6 +151,9 @@ let bones: [(VNHumanBodyPoseObservation.JointName, VNHumanBodyPoseObservation.Jo
     (.rightElbow, .rightWrist),
 
     (.neck, .root),
+    
+    (.root, .leftHip),
+    (.root, .rightHip),
     
     (.root, .leftKnee),
     (.leftKnee, .leftAnkle),
@@ -225,3 +177,35 @@ extension ViewController: VideoCaptureDelegate {
         }
     }
 }
+
+
+// MARK: - Unused or deprecated code (delete later)
+
+//    private func processObservation(_ observation: VNHumanBodyPoseObservation) {
+//        guard let recognizedPoints = try? observation.recognizedPoints(.all) else { return }
+//
+//        let torsoJointNames: [VNHumanBodyPoseObservation.JointName] = [
+//            .neck,
+//            .rightShoulder,
+//            .rightHip,
+//            .root,
+//            .leftHip,
+//            .leftShoulder,
+//            .leftElbow,
+//            .leftWrist
+//        ]
+//
+//        let imagePoints: [CGPoint] = torsoJointNames.compactMap {
+//            guard let point = recognizedPoints[$0], point.confidence > 0 else { return nil }
+//
+//            // Set width and height later
+//            return VNImagePointForNormalizedPoint(point.location, Int(testImage.image?.size.width ?? 0), Int(testImage.image?.size.height ?? 0))
+//        }
+//
+//        imagePoints.forEach { point in
+//            let view = UIView()
+//            view.frame = CGRect(x: point.x, y: point.y, width: 40, height: 40)
+//            view.backgroundColor = .red
+//            self.view.addSubview(view)
+//        }
+//    }
