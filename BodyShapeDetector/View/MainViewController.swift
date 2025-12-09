@@ -4,10 +4,13 @@ import UIKit
 import Vision
 import CoreML
 import SnapKit
+import Combine
 
-class MainViewController: BaseViewController {
+final class MainViewController: BaseViewController {
     
     private let viewModel: MainViewModel
+    
+    private var cancellables = Set<AnyCancellable>()
     
     init(viewModel: MainViewModel, currentFrame: CGImage? = nil) {
         self.viewModel = viewModel
@@ -34,7 +37,7 @@ class MainViewController: BaseViewController {
         super.viewDidLoad()
         setupNavigation()
         setupAndBeginCapturingVideoFrames()
-        viewModel.subscribe(self)
+        setupBindings()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -69,6 +72,19 @@ class MainViewController: BaseViewController {
         viewModel.setupAVCapture()
     }
     
+    private func setupBindings() {
+        viewModel.$didAVCapture.sink { _ in
+            self.viewModel.subscribeToVideoDelegate(to: self)
+            self.viewModel.startCapturing(completion: nil)
+        }.store(in: &cancellables)
+        
+        viewModel.$error.sink { error in
+            if let error {
+                print("Something went wrong in main: \(error)")
+            }
+        }.store(in: &cancellables)
+    }
+    
     private func setupNavigation() {
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "arrow.trianglehead.2.clockwise.rotate.90.camera.fill"), style: .plain, target: self, action: #selector(didTapFlipCamera))
     }
@@ -76,19 +92,6 @@ class MainViewController: BaseViewController {
     @objc private func didTapFlipCamera() {
         viewModel.flipCamera()
     }
-}
-
-extension MainViewController: MainViewDelegate {
-    func didAVCapture() {
-        viewModel.subscribeToVideoDelegate(to: self)
-        viewModel.startCapturing(completion: nil)
-    }
-    
-    func error(_ error: any Error) {
-        print("Somehting went wrong in main delegate \(error)")
-    }
-    
-    
 }
 
 extension MainViewController: VideoCaptureDelegate {

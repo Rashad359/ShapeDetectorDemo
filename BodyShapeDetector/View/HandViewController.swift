@@ -1,10 +1,13 @@
 import UIKit
 import Vision
 import SnapKit
+import Combine
 
 final class HandViewController: BaseViewController {
     
     private let viewModel: HandViewModel
+    
+    private var cancellables = Set<AnyCancellable>()
     
     init(viewModel: HandViewModel) {
         self.viewModel = viewModel
@@ -37,7 +40,7 @@ final class HandViewController: BaseViewController {
         super.viewDidLoad()
         setupNavigation()
         setupAndBeginCapturingVideoFrames()
-        viewModel.subscribe(self)
+        setupBindings()
     }
     
     override func setupUI() {
@@ -74,16 +77,18 @@ final class HandViewController: BaseViewController {
     @objc private func didTapFlipCamera() {
         viewModel.flipCamera()
     }
-}
-
-extension HandViewController: HandViewDelegate {
-    func error(_ error: any Error) {
-        print("Something went wrong in hand delegate: \(error.localizedDescription)")
-    }
     
-    func didFinishProccess() {
-        viewModel.subscribeToVideoDelegate(to: self)
-        viewModel.startCapturing(completion: nil)
+    private func setupBindings() {
+        viewModel.$didFinishProcess.sink { _ in
+            self.viewModel.subscribeToVideoDelegate(to: self)
+            self.viewModel.startCapturing(completion: nil)
+        }.store(in: &cancellables)
+        
+        viewModel.$error.sink { error in
+            if let error {
+                print("Something went wrong in hand: \(error)")
+            }
+        }.store(in: &cancellables)
     }
 }
 

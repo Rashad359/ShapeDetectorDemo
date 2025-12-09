@@ -7,22 +7,15 @@
 
 import UIKit
 import Vision
-
-// Change to combine later
-protocol HandViewDelegate: AnyObject {
-    func error(_ error: Error)
-    func didFinishProccess()
-}
+import Combine
 
 final class HandViewModel {
     
+    @Published private(set) var didFinishProcess: Bool = false
+    
+    @Published private(set) var error: Error? = nil
+    
     private let videoCapture = VideoCaptureManager()
-    
-    private weak var delegate: HandViewDelegate? = nil
-    
-    func subscribe(_ delegate: HandViewDelegate) {
-        self.delegate = delegate
-    }
     
     func subscribeToVideoDelegate(to view: UIViewController) {
         videoCapture.delegate = view as? any VideoCaptureDelegate
@@ -39,7 +32,7 @@ final class HandViewModel {
     func flipCamera() {
         videoCapture.flipCamera {[weak self] error in
             if let error {
-                self?.delegate?.error(error)
+                self?.error = error
             }
         }
     }
@@ -47,10 +40,10 @@ final class HandViewModel {
     func setupAVCapture() {
         videoCapture.setupAVCapture {[weak self] error in
             if let error {
-                self?.delegate?.error(error)
+                self?.error = error
             }
             
-            self?.delegate?.didFinishProccess()
+            self?.didFinishProcess = true
         }
     }
     

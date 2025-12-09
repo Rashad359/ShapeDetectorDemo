@@ -8,21 +8,15 @@
 import UIKit
 import Vision
 import AVFoundation
-
-// Change to combine later
-protocol MainViewDelegate: AnyObject {
-    func didAVCapture()
-    func error(_ error: Error)
-}
+import Combine
 
 final class MainViewModel {
+    
+    @Published private(set) var didAVCapture: Bool = false
+    
+    @Published private(set) var error: Error? = nil
+    
     private let videoCapture = VideoCaptureManager()
-    
-    private weak var delegate: MainViewDelegate? = nil
-    
-    func subscribe(_ delegate: MainViewDelegate) {
-        self.delegate = delegate
-    }
     
     func subscribeToVideoDelegate(to view: UIViewController) {
         videoCapture.delegate = view as? any VideoCaptureDelegate
@@ -39,7 +33,7 @@ final class MainViewModel {
     func flipCamera() {
         videoCapture.flipCamera {[weak self] error in
             if let error {
-                self?.delegate?.error(error)
+                self?.error = error
             }
         }
     }
@@ -47,10 +41,10 @@ final class MainViewModel {
     func setupAVCapture() {
         videoCapture.setupAVCapture {[weak self] error in
             if let error {
-                self?.delegate?.error(error)
+                self?.error = error
             }
-            
-            self?.delegate?.didAVCapture()
+
+            self?.didAVCapture = true
         }
     }
     
