@@ -14,8 +14,8 @@ final class TabBarController: UITabBarController {
     }
     
     private func setupTabs() {
-        let mainNav = self.createNav(with: "main", image: UIImage(systemName: "figure.stand"), vc: ViewController())
-        let handNav = self.createNav(with: "Hand", image: UIImage(systemName: "hand.wave"), vc: HandViewController())
+        let mainNav = self.createNav(with: "main", image: UIImage(systemName: "figure.stand"), vc: MainViewBuilder().build())
+        let handNav = self.createNav(with: "Hand", image: UIImage(systemName: "hand.wave"), vc: HandViewBuilder().build())
         self.setViewControllers([mainNav, handNav], animated: true)
     }
     

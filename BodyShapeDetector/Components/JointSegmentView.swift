@@ -49,6 +49,46 @@ class JointSegmentView: UIView {
         jointLayer.fillColor = jointColor
         layer.addSublayer(jointLayer)
     }
+    
+    private func updatePathLayer() {
+           let flipVertical = CGAffineTransform.verticalFlip
+           let scaleToBounds = CGAffineTransform(scaleX: bounds.width, y: bounds.height)
+
+           jointPath.removeAllPoints()
+           jointSegmentPath.removeAllPoints()
+
+           // Draw circles for joints
+           for (_, point) in joints {
+               let p = point.applying(flipVertical).applying(scaleToBounds)
+               jointPath.append(UIBezierPath(arcCenter: p,
+                                             radius: jointRadius,
+                                             startAngle: 0,
+                                             endAngle: .pi * 2,
+                                             clockwise: true))
+           }
+
+           // Draw independent bone segments
+        for (j1, j2) in BonesModel.bones {
+               if let p1 = joints[j1], let p2 = joints[j2] {
+                   let p1s = p1.applying(flipVertical).applying(scaleToBounds)
+                   let p2s = p2.applying(flipVertical).applying(scaleToBounds)
+
+                   jointSegmentPath.move(to: p1s)
+                   jointSegmentPath.addLine(to: p2s)
+               }
+           }
+
+           jointLayer.path = jointPath.cgPath
+           jointSegmentLayer.path = jointSegmentPath.cgPath
+       }
+}
+
+// MARK: - Place extension to different folders later
+extension CGAffineTransform {
+    static var verticalFlip = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: -1)
+}
+
+//MARK: - Unused code (delete before release)
 
 //    private func updatePathLayer() {
 //        let flipVertical = CGAffineTransform.verticalFlip
@@ -72,51 +112,3 @@ class JointSegmentView: UIView {
 //        jointLayer.path = jointPath.cgPath
 //        jointSegmentLayer.path = jointSegmentPath.cgPath
 //    }
-    
-    private func updatePathLayer() {
-           let flipVertical = CGAffineTransform.verticalFlip
-           let scaleToBounds = CGAffineTransform(scaleX: bounds.width, y: bounds.height)
-
-           jointPath.removeAllPoints()
-           jointSegmentPath.removeAllPoints()
-
-           // Draw circles for joints
-           for (_, point) in joints {
-               let p = point.applying(flipVertical).applying(scaleToBounds)
-               jointPath.append(UIBezierPath(arcCenter: p,
-                                             radius: jointRadius,
-                                             startAngle: 0,
-                                             endAngle: .pi * 2,
-                                             clockwise: true))
-           }
-
-           // Draw independent bone segments
-           for (j1, j2) in bones {
-               if let p1 = joints[j1], let p2 = joints[j2] {
-                   let p1s = p1.applying(flipVertical).applying(scaleToBounds)
-                   let p2s = p2.applying(flipVertical).applying(scaleToBounds)
-
-                   jointSegmentPath.move(to: p1s)
-                   jointSegmentPath.addLine(to: p2s)
-               }
-           }
-
-           jointLayer.path = jointPath.cgPath
-           jointSegmentLayer.path = jointSegmentPath.cgPath
-       }
-}
-
-// MARK: - Place extension to different folders later
-extension CGAffineTransform {
-    static var verticalFlip = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: -1)
-}
-
-//let jointsOfInterest: [VNHumanBodyPoseObservation.JointName] = [
-//    .rightWrist,
-//    .rightElbow,
-//    .rightShoulder,
-//    .rightHip,
-//    .rightKnee,
-//    .rightAnkle
-//]
-

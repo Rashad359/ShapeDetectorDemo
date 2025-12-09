@@ -11,10 +11,10 @@ import CoreVideo
 import VideoToolbox
 
 protocol VideoCaptureDelegate: AnyObject {
-    func videoCapture(_ videoCapture: VideoCapture, didCaptureFrame capturedImage: CGImage?, didOutput sampleBuffer: CMSampleBuffer)
+    func videoCapture(_ videoCapture: VideoCaptureManager, didCaptureFrame capturedImage: CGImage?, didOutput sampleBuffer: CMSampleBuffer)
 }
 
-final class VideoCapture: NSObject {
+final class VideoCaptureManager: NSObject {
     enum VideoCaptureError: Error {
         case captureIsMissing
         case invalidInput
@@ -156,7 +156,7 @@ final class VideoCapture: NSObject {
     }
 }
 
-extension VideoCapture: AVCaptureVideoDataOutputSampleBufferDelegate {
+extension VideoCaptureManager: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let delegate = delegate else { return }
         
