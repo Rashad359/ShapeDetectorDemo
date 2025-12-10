@@ -9,4 +9,8 @@ class BaseViewController: UIViewController {
     func setupUI() {
         
     }
+    
+    nonisolated deinit {
+        
+    }
 }

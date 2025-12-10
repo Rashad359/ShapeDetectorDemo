@@ -32,14 +32,18 @@ final class HandViewController: BaseViewController {
     
     private let cameraImage: UIImageView = {
         let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
         
         return imageView
     }()
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
         setupNavigation()
+        
         setupAndBeginCapturingVideoFrames()
+        
         setupBindings()
     }
     
@@ -79,9 +83,10 @@ final class HandViewController: BaseViewController {
     }
     
     private func setupBindings() {
-        viewModel.$didFinishProcess.sink { _ in
-            self.viewModel.subscribeToVideoDelegate(to: self)
-            self.viewModel.startCapturing(completion: nil)
+        viewModel.$didFinishProcess.sink {[weak self] _ in
+            guard let strongSelf = self else { return }
+            self?.viewModel.subscribeToVideoDelegate(to: strongSelf)
+            self?.viewModel.startCapturing(completion: nil)
         }.store(in: &cancellables)
         
         viewModel.$error.sink { error in
@@ -97,73 +102,3 @@ extension HandViewController: VideoCaptureDelegate {
         viewModel.finishCameraSetup(didCaptureFrame: capturedImage, forView: handOverlayView, with: cameraImage)
     }
 }
-
-// MARK: - Unused or deprecated code (delete before release)
-
-//        videoCapture.setupAVCapture { error in
-//            if let error {
-//                print("Something went wrong: \(error)")
-//            }
-//
-//            self.videoCapture.delegate = self
-//
-//            self.videoCapture.startCapturing()
-//        }
-
-//    private func processPose(cgImage: CGImage?) {
-//
-//        guard let image = cgImage else { return }
-//
-//        let requestHandler = VNImageRequestHandler(cgImage: image, orientation: .right)
-//
-//        let handRequest = VNDetectHumanHandPoseRequest(completionHandler: handPoseHandler)
-//        handRequest.maximumHandCount = 1
-//
-//        do {
-//            try requestHandler.perform([handRequest])
-//        } catch {
-//            print("Unable to perform the request: \(error).")
-//        }
-//    }
-    
-//    private func handPoseHandler(request: VNRequest, error: Error?) {
-//        guard let observations = request.results as? [VNHumanHandPoseObservation],
-//              let observation = observations.first else {
-//            DispatchQueue.main.async {
-//                self.handOverlayView.isHidden = true
-//            }
-//            return
-//        }
-//
-//        guard let point = try? observation.recognizedPoint(.middleMCP),
-//              point.confidence > 0.2 else {
-//            DispatchQueue.main.async {
-//                self.handOverlayView.isHidden = true
-//            }
-//           return
-//        }
-//
-//        let normalizedPoint = point.location
-//
-//        DispatchQueue.main.async {
-//            let screenWidth = self.cameraImage.bounds.width
-//            let screenHeight = self.cameraImage.bounds.height
-//
-//            let x = normalizedPoint.x * screenWidth
-//            let y = (1 - normalizedPoint.y) * screenHeight + 50
-//
-//            self.handOverlayView.isHidden = false
-//            self.handOverlayView.center = CGPoint(x: x, y: y)
-//        }
-//
-//    }
-
-
-//        guard let image = capturedImage else { fatalError("Captured image is nil") }
-//
-//        self.processPose(cgImage: image)
-//
-//
-//        DispatchQueue.main.async {
-//            self.cameraImage.image = UIImage(cgImage: image, scale: 1.0, orientation: .right)
-//        }

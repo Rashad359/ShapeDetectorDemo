@@ -1,10 +1,3 @@
-//
-//  HandViewModel.swift
-//  BodyShapeDetector
-//
-//  Created by Rəşad Əliyev on 12/5/25.
-//
-
 import UIKit
 import Vision
 import Combine
@@ -16,6 +9,8 @@ final class HandViewModel {
     @Published private(set) var error: Error? = nil
     
     private let videoCapture = VideoCaptureManager()
+    
+    // MARK: - Video Configuration
     
     func subscribeToVideoDelegate(to view: UIViewController) {
         videoCapture.delegate = view as? any VideoCaptureDelegate
@@ -47,6 +42,23 @@ final class HandViewModel {
         }
     }
     
+    func finishCameraSetup(didCaptureFrame capturedImage: CGImage?, forView overlayView: UIView, with camera: UIImageView) {
+        guard let image = capturedImage else { fatalError("Captured image is nil") }
+        
+        self.processPose(cgImage: image, forView: overlayView, camera: camera)
+        
+        
+        DispatchQueue.main.async {
+            
+            camera.image = UIImage(cgImage: image, scale: 1.0, orientation: .right)
+        }
+    }
+}
+
+
+// MARK: - Hand Detection
+
+extension HandViewModel {
     private func processPose(cgImage: CGImage?, forView overlayView: UIView, camera: UIImageView) {
         
         guard let image = cgImage else { return }
@@ -95,17 +107,5 @@ final class HandViewModel {
             overlayView.center = CGPoint(x: x, y: y)
         }
         
-    }
-    
-    func finishCameraSetup(didCaptureFrame capturedImage: CGImage?, forView overlayView: UIView, with camera: UIImageView) {
-        guard let image = capturedImage else { fatalError("Captured image is nil") }
-        
-        self.processPose(cgImage: image, forView: overlayView, camera: camera)
-        
-        
-        DispatchQueue.main.async {
-            
-            camera.image = UIImage(cgImage: image, scale: 1.0, orientation: .right)
-        }
     }
 }

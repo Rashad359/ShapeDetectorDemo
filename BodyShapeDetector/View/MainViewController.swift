@@ -1,14 +1,15 @@
-
-
 import UIKit
 import Vision
 import CoreML
 import SnapKit
 import Combine
+import CoreMotion
 
 final class MainViewController: BaseViewController {
     
     private let viewModel: MainViewModel
+    
+    private let motionManager = CMMotionManager()
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -21,6 +22,31 @@ final class MainViewController: BaseViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
+    private let leftIndicatorView: UIView = {
+        let view = UIView()
+        view.backgroundColor = UIColor.green
+        view.alpha = 0
+        
+        return view
+    }()
+    
+    private let rightIndicatorView: UIView = {
+        let view = UIView()
+        view.backgroundColor = UIColor.red
+        view.alpha = 0
+        
+        return view
+    }()
+    
+    private let warningLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Don't tilt your camera"
+        label.textColor = .red
+        label.font = UIFont.systemFont(ofSize: 24, weight: .semibold)
+        
+        return label
+    }()
+    
     private let testView: JointSegmentView = {
         let view = JointSegmentView()
         
@@ -29,15 +55,33 @@ final class MainViewController: BaseViewController {
     
     private let testImage: UIImageView = {
         let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
         
         return imageView
     }()
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
         setupNavigation()
+        
         setupAndBeginCapturingVideoFrames()
+        
         setupBindings()
+        
+        startDeviceMotionUpdates()
+    }
+    
+    private func startDeviceMotionUpdates() {
+        viewModel.startMotionUpdates {[weak self] isTilting in
+            if isTilting {
+                self?.warningLabel.text = "Don't tilt your camera"
+                self?.warningLabel.textColor = .red
+            } else {
+                self?.warningLabel.text = "Hover over the person"
+                self?.warningLabel.textColor = .green
+            }
+        }
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -53,9 +97,7 @@ final class MainViewController: BaseViewController {
     }
     
     override func setupUI() {
-        view.addSubview(testImage)
-        view.addSubview(testView)
-        view.bringSubviewToFront(testView)
+        [testImage, leftIndicatorView, rightIndicatorView, warningLabel, testView].forEach(view.addSubview)
         
         testImage.snp.makeConstraints { make in
             make.edges.equalToSuperview()
@@ -65,7 +107,23 @@ final class MainViewController: BaseViewController {
             make.edges.equalToSuperview()
         }
         
-        testView.frame = testImage.frame
+        leftIndicatorView.snp.makeConstraints { make in
+            make.leading.equalToSuperview()
+            make.height.equalToSuperview()
+            make.width.equalTo(view.snp.width).multipliedBy(0.5)
+        }
+        
+        rightIndicatorView.snp.makeConstraints { make in
+            make.trailing.equalToSuperview()
+            make.height.equalToSuperview()
+            make.width.equalTo(view.snp.width).multipliedBy(0.5)
+        }
+        
+        warningLabel.snp.makeConstraints { make in
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(10)
+            make.centerX.equalToSuperview()
+        }
+        
     }
     
     private func setupAndBeginCapturingVideoFrames() {
@@ -73,14 +131,36 @@ final class MainViewController: BaseViewController {
     }
     
     private func setupBindings() {
-        viewModel.$didAVCapture.sink { _ in
-            self.viewModel.subscribeToVideoDelegate(to: self)
-            self.viewModel.startCapturing(completion: nil)
+        
+        viewModel.$didAVCapture.sink {[weak self] _ in
+            guard let strongSelf = self else { return }
+            self?.viewModel.subscribeToVideoDelegate(to: strongSelf)
+            self?.viewModel.startCapturing(completion: nil)
         }.store(in: &cancellables)
         
         viewModel.$error.sink { error in
             if let error {
                 print("Something went wrong in main: \(error)")
+            }
+        }.store(in: &cancellables)
+        
+        viewModel.$leaningTo.sink { leanDirection in
+            switch leanDirection {
+            case .left:
+                UIView.animate(withDuration: 0.5) {[weak self] in
+                    self?.leftIndicatorView.alpha = 0.6
+                    self?.rightIndicatorView.alpha = 0
+                }
+            case .right:
+                UIView.animate(withDuration: 0.5) {[weak self] in
+                    self?.rightIndicatorView.alpha = 0.6
+                    self?.leftIndicatorView.alpha = 0
+                }
+            case .none:
+                UIView.animate(withDuration: 0.5) {[weak self] in
+                    self?.rightIndicatorView.alpha = 0
+                    self?.leftIndicatorView.alpha = 0
+                }
             }
         }.store(in: &cancellables)
     }
@@ -101,35 +181,3 @@ extension MainViewController: VideoCaptureDelegate {
         viewModel.finishCameraSetup(didCaptureFrame: image, forView: testView, cameraImage: testImage)
     }
 }
-
-
-// MARK: - Unused or deprecated code (delete later)
-
-//    private func processObservation(_ observation: VNHumanBodyPoseObservation) {
-//        guard let recognizedPoints = try? observation.recognizedPoints(.all) else { return }
-//
-//        let torsoJointNames: [VNHumanBodyPoseObservation.JointName] = [
-//            .neck,
-//            .rightShoulder,
-//            .rightHip,
-//            .root,
-//            .leftHip,
-//            .leftShoulder,
-//            .leftElbow,
-//            .leftWrist
-//        ]
-//
-//        let imagePoints: [CGPoint] = torsoJointNames.compactMap {
-//            guard let point = recognizedPoints[$0], point.confidence > 0 else { return nil }
-//
-//            // Set width and height later
-//            return VNImagePointForNormalizedPoint(point.location, Int(testImage.image?.size.width ?? 0), Int(testImage.image?.size.height ?? 0))
-//        }
-//
-//        imagePoints.forEach { point in
-//            let view = UIView()
-//            view.frame = CGRect(x: point.x, y: point.y, width: 40, height: 40)
-//            view.backgroundColor = .red
-//            self.view.addSubview(view)
-//        }
-//    }

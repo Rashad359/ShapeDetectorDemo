@@ -1,10 +1,3 @@
-//
-//  VideoCapture.swift
-//  BodyShapeDetector
-//
-//  Created by Rəşad Əliyev on 12/4/25.
-//
-
 import UIKit
 import AVFoundation
 import CoreVideo
@@ -33,16 +26,16 @@ final class VideoCaptureManager: NSObject {
     private let sessionQueue = DispatchQueue(label: "Video_session")
     
     func flipCamera(completion: @escaping (Error?) -> Void) {
-        sessionQueue.async {
+        sessionQueue.async {[weak self] in
             do {
-                self.cameraPosition = self.cameraPosition == .back ? .front : .back
+                self?.cameraPosition = self?.cameraPosition == .back ? .front : .back
                 
-                self.captureSession.beginConfiguration()
+                self?.captureSession.beginConfiguration()
                 
-                try self.setCaptureSessionInput()
-                try self.setCaptureSessionOutput()
+                try self?.setCaptureSessionInput()
+                try self?.setCaptureSessionOutput()
                 
-                self.captureSession.commitConfiguration()
+                self?.captureSession.commitConfiguration()
                 
                 DispatchQueue.main.async {
                     completion(nil)
@@ -98,9 +91,9 @@ final class VideoCaptureManager: NSObject {
     }
     
     func setupAVCapture(completion: @escaping (Error?) -> Void) {
-        sessionQueue.async {
+        sessionQueue.async {[weak self] in
             do {
-                try self.setupAVCapture()
+                try self?.setupAVCapture()
                 DispatchQueue.main.async {
                     completion(nil)
                 }
@@ -121,8 +114,8 @@ final class VideoCaptureManager: NSObject {
         
         captureSession.sessionPreset = .vga640x480
         
-        try self.setCaptureSessionInput()
-        try self.setCaptureSessionOutput()
+        try setCaptureSessionInput()
+        try setCaptureSessionOutput()
         
         captureSession.commitConfiguration()
     }

@@ -1,10 +1,3 @@
-//
-//  MainViewModel.swift
-//  BodyShapeDetector
-//
-//  Created by Rəşad Əliyev on 12/9/25.
-//
-
 import UIKit
 import Vision
 import AVFoundation
@@ -12,12 +5,23 @@ import Combine
 
 final class MainViewModel {
     
+    enum LeanDirection {
+        case left
+        case right
+        case none
+    }
+    
+    private let motionManager = MotionManager.shared
+    
+    @Published private(set) var leaningTo: LeanDirection = .none
+    
     @Published private(set) var didAVCapture: Bool = false
     
     @Published private(set) var error: Error? = nil
     
     private let videoCapture = VideoCaptureManager()
     
+    //MARK: - Video configuration
     func subscribeToVideoDelegate(to view: UIViewController) {
         videoCapture.delegate = view as? any VideoCaptureDelegate
     }
@@ -48,6 +52,32 @@ final class MainViewModel {
         }
     }
     
+    func finishCameraSetup(didCaptureFrame capturedImage: CGImage, forView testView: JointSegmentView, cameraImage: UIImageView) {
+        
+        self.processPose(didOutput: capturedImage, forView: testView)
+        
+        
+        DispatchQueue.main.async {
+            cameraImage.image = UIImage(cgImage: capturedImage, scale: 1.0, orientation: .right)
+            
+            testView.imageSize = CGSize(width: capturedImage.height, height: capturedImage.width)
+            
+            testView.contentMode = cameraImage.contentMode
+        }
+    }
+}
+
+// MARK: - Motion Detection
+
+extension MainViewModel {
+    func startMotionUpdates(completion: @escaping (Bool) -> Void) {
+        motionManager.startDeviceMotionUpdates(completion: completion)
+    }
+}
+
+// MARK: - Joint Detection
+
+extension MainViewModel {
     private func processPose(didOutput sampleImage: CGImage, forView testView: JointSegmentView) {
         let requestHandler = VNImageRequestHandler(cgImage: sampleImage, orientation: .right)
         
@@ -68,6 +98,7 @@ final class MainViewModel {
             
             DispatchQueue.main.async {
                 testView.joints = [:]
+                self.leaningTo = .none
             }
             return
         }
@@ -110,26 +141,16 @@ final class MainViewModel {
         
         let horizontalOffset = shoulderMid.x - hipMid.x
         
-        let leanThreshold: CGFloat = 0.1
+        let leanThreshold: CGFloat = 0.05
         
         if horizontalOffset > leanThreshold {
-            print("Leaning to the right")
+            self.leaningTo = .right
         } else if horizontalOffset < -leanThreshold {
-            print("Leaning to the left")
+            self.leaningTo = .left
         } else {
-            print("Standing upright")
+            self.leaningTo = .none
         }
         
         return joints
-    }
-    
-    func finishCameraSetup(didCaptureFrame capturedImage: CGImage, forView testView: JointSegmentView, cameraImage: UIImageView) {
-        
-        self.processPose(didOutput: capturedImage, forView: testView)
-        
-        
-        DispatchQueue.main.async {
-            cameraImage.image = UIImage(cgImage: capturedImage, scale: 1.0, orientation: .right)
-        }
     }
 }

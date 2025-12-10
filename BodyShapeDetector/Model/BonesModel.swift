@@ -1,10 +1,3 @@
-//
-//  BonesModel.swift
-//  BodyShapeDetector
-//
-//  Created by Rəşad Əliyev on 12/8/25.
-//
-
 import Foundation
 import Vision
 

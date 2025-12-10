@@ -1,10 +1,3 @@
-//
-//  SceneDelegate.swift
-//  BodyShapeDetector
-//
-//  Created by Rəşad Əliyev on 12/3/25.
-//
-
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {

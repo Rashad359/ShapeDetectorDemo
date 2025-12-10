@@ -1,10 +1,3 @@
-//
-//  TabBarController.swift
-//  BodyShapeDetector
-//
-//  Created by Rəşad Əliyev on 12/5/25.
-//
-
 import UIKit
 
 final class TabBarController: UITabBarController {
